@@ -1,0 +1,28 @@
+{
+  "camera": {
+    "online": false,
+    "path": "./data_folder/1",
+    "start_end_index": [0, -1],
+    "fps": 30,
+    "image_size": [480, 848]
+
+  },
+  "point_cloud": {
+    "kmeans_n_cluster": 10,
+    "ransac_distance_threshold": 0.04,
+    "ransac_n": 3,
+    "ransac_num_iterations": 1000,
+    "show_first_process": false,
+    "radius_outlier_nb_points": 10,
+    "radius_outlier_radius": 0.3,
+    "max_distance_to_keep": 2.5,
+    "min_distance_to_keep": 0.3
+  },
+  "emergency_brake": {
+    "min_x": 0,
+    "min_y": 0,
+    "min_z": 0.5,
+    "security_margin": 0.15
+  }
+
+}
