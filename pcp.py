@@ -70,6 +70,24 @@ class PointCloudProcess:
         # Add the console handler to the logger
         self.logger.addHandler(ch)
 
+    def make_object_list_opencv(self, label: np.ndarray, center: np.ndarray) -> list:
+        """
+        Create a list of Object instances using OpenCV labels and centers.
+
+        Args:
+            label (numpy.ndarray): Array of labels.
+            center (numpy.ndarray): Array of centers.
+
+        Returns:
+            list: List of Object instances.
+        """
+        # Convert label array to numpy array
+        labels = np.array(label.tolist())
+        # Create a list of Object instances based on labels and centers
+        object_list = [Object(center_pos=center[x, :], num=np.count_nonzero(labels == x)) for x in
+                       range(self.kmeans_n_cluster)]
+        return object_list
+
     @staticmethod
     def remove_points(points: np.ndarray, criterium: float, max_or_min: bool) -> np.ndarray:
         """
@@ -102,11 +120,11 @@ class PointCloudProcess:
         # Create a deep copy of the point cloud points
         points = copy.deepcopy(np.asarray(self.point_cloud.points))
 
-        # Remove points beyond the maximum distance
-        points = self.remove_points(points, self.max_distance_to_keep, True)
-        # Remove points below the minimum distance
-        points = self.remove_points(points, self.min_distance_to_keep, False)
-        # Downsample points by selecting every x point
+        # TODO: Remove points beyond the maximum distance
+        points = points[points[:, 2] > self.max_distance_to_keep]
+        # TODO: Remove points below the minimum distance
+        points = points[points[:, 2] < self.min_distance_to_keep]
+        # TODO: Downsample points by selecting every x point
         points = points[::self.pre_downsample]
         # Convert the filtered points to an Open3D point cloud
         vector = o3d.pybind.utility.Vector3dVector(points)
@@ -114,6 +132,27 @@ class PointCloudProcess:
 
         # Update the point cloud attribute with the pre-filtered point cloud
         self.point_cloud = copy.deepcopy(point_cloud)
+
+    def calculate_plane_points(self) -> np.ndarray:
+        """
+        Calculate inlier points of the plane based on the current plane model.
+
+        Returns:
+            numpy.ndarray: Indices of inlier points representing the plane.
+        """
+        # Extract plane parameters (a, b and c are the normal)
+        [a, b, c, d] = self.plane_model
+        # Get point cloud points
+        points = np.asarray(self.point_cloud.points)
+        # TODO: Calculate length of the plane normal
+        plane_len = math.sqrt(a * a + b * b + c * c)
+        # TODO: Calculate distances from points to the plane
+        distances = abs(a * points[:, 0] + b * points[:, 1] + c * points[:, 2] + d) / plane_len
+        # TODO: Create a mask for inlier points based on distance threshold
+        mask = distances < self.ransac_distance_threshold
+        # TODO: Extract indices of inlier points
+        inlier_points = np.where(mask)[0]
+        return inlier_points
 
     def remove_ground_points(self, inliers_points: np.ndarray) -> None:
         """
@@ -123,13 +162,13 @@ class PointCloudProcess:
                 inliers_points (numpy.ndarray): Indices of inliers representing ground points.
 
             """
-        # Generate indices of all points
-        indexes = list(range(0, np.asarray(self.point_cloud.points).shape[0]))
         # Create a deep copy of the point cloud points
         points = copy.deepcopy(np.asarray(self.point_cloud.points))
-        # Delete inliers (ground points)
+        # TODO: Generate indices of all points
+        indexes = list(range(0, np.asarray(self.point_cloud.points).shape[0]))
+        # TODO: Delete inliers (ground points)
         points_new = np.delete(indexes, inliers_points)
-        # Update points array
+        # TODO: Update points array
         points = points[points_new]
         # Convert points to an Open3D point cloud
         vector = o3d.pybind.utility.Vector3dVector(points)
@@ -153,7 +192,7 @@ class PointCloudProcess:
                                   lookat=[0, 0, 0],
                                   up=[-0.0694, -0.9768, 0.2024])
 
-        # Apply pre-filtering to the point cloud
+        # TODO: Apply pre-filtering to the point cloud
         self.point_cloud_prefilter()
 
         # Visualize point cloud after pre-filtering if it's the first run and show_first_process is enabled
@@ -165,7 +204,7 @@ class PointCloudProcess:
 
         # Segment plane using RANSAC
         if self.plane_model is None:
-            # If plane model is not yet initialized, perform RANSAC
+            # TODO: If plane model is not yet initialized, perform RANSAC
             plane_model, inliers_points = self.point_cloud.segment_plane(
                 distance_threshold=self.ransac_distance_threshold,
                 ransac_n=self.ransac_n,
@@ -173,14 +212,14 @@ class PointCloudProcess:
             self.init_num_iniliers=len(inliers_points)
             self.plane_model = plane_model
         else:
-            # Otherwise, calculate plane points using the existing model
+            # TODO: Otherwise, calculate plane points using the existing model
             inliers_points = self.calculate_plane_points()
             if len(inliers_points)<0.8*self.init_num_iniliers:
                 self.pre_downsample+=1
                 self.pre_downsample=7 if self.pre_downsample>7 else self.pre_downsample
                 self.init_num_iniliers=len(inliers_points)
 
-        # Remove ground points
+        # TODO: Remove ground points
         self.remove_ground_points(inliers_points)
 
         # Visualize point cloud after ground removal if it's the first run and show_first_process is enabled
@@ -193,27 +232,6 @@ class PointCloudProcess:
         self.first = False
         end = time.time()
         self.logger.info(f"RANSAC running time: {end - start}")
-
-    def calculate_plane_points(self) -> np.ndarray:
-        """
-        Calculate inlier points of the plane based on the current plane model.
-
-        Returns:
-            numpy.ndarray: Indices of inlier points representing the plane.
-        """
-        # Extract plane parameters
-        [a, b, c, d] = self.plane_model
-        # Get point cloud points
-        points = np.asarray(self.point_cloud.points)
-        # Calculate length of the plane normal
-        plane_len = math.sqrt(a * a + b * b + c * c)
-        # Calculate distances from points to the plane
-        distances = abs(a * points[:, 0] + b * points[:, 1] + c * points[:, 2] + d) / plane_len
-        # Create a mask for inlier points based on distance threshold
-        mask = distances < self.ransac_distance_threshold
-        # Extract indices of inlier points
-        inlier_points = np.where(mask)[0]
-        return inlier_points
 
     def kmeans_prefilter(self,downsample:int=3) -> None:
         """
@@ -232,24 +250,6 @@ class PointCloudProcess:
         # Update the point cloud attribute with the pre-filtered point cloud
         self.point_cloud = copy.deepcopy(point_cloud)
 
-    def make_object_list_opencv(self, label: np.ndarray, center: np.ndarray) -> list:
-        """
-        Create a list of Object instances using OpenCV labels and centers.
-
-        Args:
-            label (numpy.ndarray): Array of labels.
-            center (numpy.ndarray): Array of centers.
-
-        Returns:
-            list: List of Object instances.
-        """
-        # Convert label array to numpy array
-        labels = np.array(label.tolist())
-        # Create a list of Object instances based on labels and centers
-        object_list = [Object(center_pos=center[x, :], num=np.count_nonzero(labels == x)) for x in
-                       range(self.kmeans_n_cluster)]
-        return object_list
-
     def kmeans_opencv(self) -> None:
         """
         Apply k-means clustering using OpenCV.
@@ -258,12 +258,12 @@ class PointCloudProcess:
         # Start timing
         start = time.time()
 
-        # Apply pre-filtering to the point cloud
+        # TODO: Apply pre-filtering to the point cloud
         self.kmeans_prefilter()
         if len(self.point_cloud.points)>15:
-            # Define termination criteria for k-means
+            # TODO: Define termination criteria for k-means
             criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-            # Perform k-means clustering
+            # TODO: Perform k-means clustering
 
             ret, label, center = cv.kmeans(np.float32(self.point_cloud.points), self.kmeans_n_cluster, None, criteria, 10,
                                        cv.KMEANS_PP_CENTERS)
