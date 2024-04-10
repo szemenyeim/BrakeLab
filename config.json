@@ -12,7 +12,7 @@
     "ransac_distance_threshold": 0.04,
     "ransac_n": 3,
     "ransac_num_iterations": 1000,
-    "show_first_process": false,
+    "show_first_process": true,
     "radius_outlier_nb_points": 10,
     "radius_outlier_radius": 0.3,
     "max_distance_to_keep": 2.5,

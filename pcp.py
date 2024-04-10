@@ -34,7 +34,7 @@ class PointCloudProcess:
         self.ransac_distance_threshold = kwargs.pop("ransac_distance_threshold", 0.04)
         self.ransac_n = kwargs.pop("ransac_n", 3)
         self.ransac_num_iterations = kwargs.pop("num_iterations", 1000)
-        self.show_first_process = kwargs.pop("show_first_process", False)
+        self.show_first_process = kwargs.pop("show_first_process", True)
         self.radius_outlier_nb_points = kwargs.pop("radius_outlier_nb_points", 10)
         self.radius_outlier_radius = kwargs.pop("radius_outlier_radius", 0.3)
         self.max_distance_to_keep = kwargs.pop("max_distance_to_keep", 2.5)
@@ -121,9 +121,9 @@ class PointCloudProcess:
         points = copy.deepcopy(np.asarray(self.point_cloud.points))
 
         # TODO: Remove points beyond the maximum distance
-        points = points[points[:, 2] > self.max_distance_to_keep]
+        points = points[points[:, 2] < self.max_distance_to_keep]
         # TODO: Remove points below the minimum distance
-        points = points[points[:, 2] < self.min_distance_to_keep]
+        points = points[points[:, 2] > self.min_distance_to_keep]
         # TODO: Downsample points by selecting every x point
         points = points[::self.pre_downsample]
         # Convert the filtered points to an Open3D point cloud
