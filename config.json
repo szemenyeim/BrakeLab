@@ -1,7 +1,7 @@
 {
   "camera": {
     "online": false,
-    "path": "./data_folder/1",
+    "path": "./data_folder",
     "start_end_index": [0, -1],
     "fps": 30,
     "image_size": [480, 848]
